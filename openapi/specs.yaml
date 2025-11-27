@@ -1,0 +1,343 @@
+openapi: 3.0.4
+
+info:
+  title: Scheduler Service
+  description: >
+    The Scheduler manages periodic jobs and dispatches them to the worker queue when due.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Development
+
+tags:
+  - name: Jobs
+    description: Endpoints for managing jobs
+
+paths:
+
+  /api/v1/jobs:
+    post:
+      tags:
+        - Jobs
+      summary: Create a new job
+      description: Adds a new job to the scheduler.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobInput'
+      responses:
+        "201":
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "409":
+          $ref: '#/components/responses/Conflict'
+
+    get:
+      tags:
+        - Jobs
+      summary: List jobs
+      description: Retrieves all jobs currently managed by the scheduler, paginated and filterable.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Status'
+        - $ref: '#/components/parameters/Url'
+      responses:
+        "200":
+          description: Paginated list of jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJobs'
+
+  /api/v1/jobs/{id}:
+    get:
+      tags:
+        - Jobs
+      summary: Get a job by ID
+      description: Retrieves a single job by its unique ID.
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        "200":
+          description: A single job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Jobs
+      summary: Delete a job
+      description: Deletes a job by its unique ID.
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        "204":
+          description: Job deleted successfully (no content)
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/jobs/{id}/pause:
+    post:
+      tags:
+        - Jobs
+      summary: Pause a job
+      description: Requests to pause a scheduled or running job.
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        "200":
+          description: Job paused successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          description: Job cannot be paused from current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/jobs/{id}/resume:
+    post:
+      tags:
+        - Jobs
+      summary: Resume a job
+      description: Requests to resume a paused job.
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        "200":
+          description: Job resumed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          description: Job cannot be resumed from current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+# -------------------------
+# Components
+# -------------------------
+components:
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+      description: Current page number
+
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 25
+        minimum: 1
+        maximum: 500
+      description: Number of items per page
+
+    Status:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/JobStatus'
+      description: Filter jobs by status
+
+    Url:
+      name: url
+      in: query
+      schema:
+        type: string
+        example: my.shop.com
+        maximum: 200
+      description: Filter jobs by URL substring match
+
+    JobId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Unique ID of the job
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Conflict:
+      description: Conflict (job already exists)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Job not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+
+    JobInput:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: URL to be crawled
+          example: my.shop.com/product-a
+          minLength: 5
+          maxLength: 200
+          format: uri
+        interval:
+          type: string
+          description: Interval duration (1s, 1m, 1h)
+          example: 5s
+          pattern: "^[0-9]+[smh]$"
+
+    JobStatus:
+      type: string
+      enum:
+        - SCHEDULED
+        - IN_PROGRESS
+        - PAUSED
+        - FAILED
+
+    Job:
+      type: object
+      required:
+        - id
+        - url
+        - status
+      properties:
+        id:
+          type: integer
+          format: int64
+        url:
+          type: string
+          example: "https://shopify.com/product/1"
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        interval:
+          type: string
+          description: >
+            Duration string, e.g., "24h". Examples: 1s, 1m, 1h, 24
+          example: 24h
+        retryAttempts:
+          type: integer
+        pauseRequested:
+          type: boolean
+          default: false
+        dispatchedAt:
+          type: string
+          format: date-time
+        nextRunAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PaginatedResponse:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - totalCount
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            type: object # placeholder
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 25
+        totalCount:
+          type: integer
+          example: 120
+        totalPages:
+          type: integer
+          example: 5
+
+    PaginatedJobs:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponse'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Job'
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+          example: The interval field must be a valid duration like '5s'
+        status:
+          type: string
+          description: Canonical error code (uppercase enum)
+          example: INVALID_ARGUMENT
+        code:
+          type: integer
+          description: HTTP status code
+          example: 400
+        errors:
+          type: array
+          description: Optional array of field-level validation errors
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: url
+              message:
+                type: string
+                example: URL must be a valid URI and at least 5 characters long
