@@ -25,6 +25,9 @@ type JobRepository interface {
 	// PutJob inserts or updates a job.
 	// If job.ID is empty, an ID is generated and assigned to the same object.
 	Save(job *model.Job) error
+
+	// Delete removes a job by its ID.
+	Delete(id int) error
 }
 
 type JobService struct {
@@ -125,4 +128,14 @@ func (s *JobService) getJobByIDOrNotFound(id int) (*model.Job, error) {
 	}
 
 	return nil, err
+}
+
+func (s *JobService) DeleteJob(id int) error {
+	log.Printf("Deleting job with ID: %d\n", id)
+	_, err := s.getJobByIDOrNotFound(id)
+	if err != nil {
+		return err
+	}
+
+	return s.Repo.Delete(id)
 }

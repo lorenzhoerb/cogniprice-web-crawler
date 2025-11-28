@@ -16,6 +16,7 @@ func SetupRouter(jobHandler *JobHandler) *gin.Engine {
 		api.POST("/jobs/:id/pause", jobHandler.PauseJob)
 		api.POST("/jobs/:id/resume", jobHandler.ResumeJob)
 		api.GET("/jobs/:id", jobHandler.GetJob)
+		api.DELETE("/jobs/:id", jobHandler.DeleteJob)
 	}
 
 	// You can also add middleware here

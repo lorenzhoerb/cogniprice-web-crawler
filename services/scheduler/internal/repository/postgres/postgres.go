@@ -37,3 +37,7 @@ func (r *jobRepository) GetByURL(url string) (*model.Job, error) {
 	}
 	return &job, result.Error
 }
+
+func (r *jobRepository) Delete(id int) error {
+	return r.db.Delete(&model.Job{}, id).Error
+}

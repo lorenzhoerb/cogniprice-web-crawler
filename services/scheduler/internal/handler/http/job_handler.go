@@ -86,6 +86,22 @@ func (h *JobHandler) ResumeJob(c *gin.Context) {
 	c.JSON(200, jobResp)
 }
 
+func (h *JobHandler) DeleteJob(c *gin.Context) {
+	id, err := parseJobID(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	err = h.Svc.DeleteJob(id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.Status(204)
+}
+
 func parseJobID(c *gin.Context) (int, error) {
 	id := c.Param("id")
 	idNum, err := strconv.Atoi(id)
