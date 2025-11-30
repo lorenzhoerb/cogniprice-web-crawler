@@ -5,6 +5,7 @@ import (
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository"
+	"github.com/lorenzhoerb/cogniprice/shared"
 	"gorm.io/gorm"
 )
 
@@ -31,11 +32,44 @@ func (r *jobRepository) GetByID(id int) (*model.Job, error) {
 
 func (r *jobRepository) GetByURL(url string) (*model.Job, error) {
 	var job model.Job
-	result := r.db.Where("url = ?", url).First(&job)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return nil, repository.ErrNotFound // Not found, return nil without error
+	result := r.db.Where("url = ?", url).Take(&job)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, repository.ErrNotFound // Not found, return nil without error
+		}
+		return nil, result.Error
 	}
-	return &job, result.Error
+	return &job, nil
+}
+
+func (r *jobRepository) List(filter *model.ListJobsFilter) ([]*model.Job, *shared.Pagination, error) {
+	var jobs []*model.Job
+
+	pagination := shared.NewPagination(filter.Page, filter.PageSize)
+
+	db := r.db.Model(&model.Job{})
+
+	// Apply URL filter if provided
+	if filter.URL != nil {
+		db = db.Where("url ILIKE ?", "%"+*filter.URL+"%")
+	}
+
+	// Get total count (ignoring limit/offset)
+	if err := db.Count(&pagination.Total).Error; err != nil {
+		return nil, nil, err
+	}
+
+	// Apply pagination
+	result := db.
+		Limit(pagination.Limit()).
+		Offset(pagination.Offset()).
+		Find(&jobs)
+
+	if result.Error != nil {
+		return nil, nil, result.Error
+	}
+
+	return jobs, pagination, nil
 }
 
 func (r *jobRepository) Delete(id int) error {

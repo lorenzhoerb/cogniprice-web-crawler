@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,24 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	}
 
 	c.JSON(200, jobResp)
+}
+
+// ListJobs retrieves jobs and returns it as a pagination.
+// Jobs can be filtered by URL substring, and Status
+func (h *JobHandler) ListJobs(c *gin.Context) {
+	var filter model.ListJobsFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		c.Error(err)
+		return
+	}
+
+	paginatedJobs, err := h.Svc.ListJobs(&filter)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, paginatedJobs)
 }
 
 func (h *JobHandler) PauseJob(c *gin.Context) {

@@ -1,11 +1,13 @@
 package service
 
 import (
+	"errors"
 	"log"
 	"time"
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository"
+	"github.com/lorenzhoerb/cogniprice/shared"
 )
 
 // JobRepository defines methods to manage jobs in the scheduler service.
@@ -22,6 +24,9 @@ type JobRepository interface {
 	// Returns null if not found.
 	GetByURL(url string) (*model.Job, error)
 
+	// List all jobs and filters them
+	List(filter *model.ListJobsFilter) ([]*model.Job, *shared.Pagination, error)
+
 	// PutJob inserts or updates a job.
 	// If job.ID is empty, an ID is generated and assigned to the same object.
 	Save(job *model.Job) error
@@ -31,13 +36,13 @@ type JobRepository interface {
 }
 
 type JobService struct {
-	Repo JobRepository
+	repo JobRepository
 }
 
 // NewJobService instantiates a JobService
 func NewJobService(repo JobRepository) *JobService {
 	return &JobService{
-		Repo: repo,
+		repo: repo,
 	}
 }
 
@@ -46,13 +51,14 @@ func (s *JobService) CreateJob(req *model.CreateJobRequest) (*model.JobResponse,
 	interval, _ := time.ParseDuration(req.Interval) // already validated
 
 	// Check for existing job with the same URL
-	existingJob, err := s.Repo.GetByURL(req.URL)
-	if err != nil {
-		return nil, err
-	}
-
-	if existingJob != nil {
+	_, err := s.repo.GetByURL(req.URL)
+	if err == nil {
+		// Job exists → cannot create duplicate
 		return nil, ErrJobWithURLExists
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		// Some other error occurred
+		return nil, err
 	}
 
 	job := &model.Job{
@@ -62,7 +68,7 @@ func (s *JobService) CreateJob(req *model.CreateJobRequest) (*model.JobResponse,
 		NextRunAt: time.Now(),
 	}
 
-	err = s.Repo.Save(job)
+	err = s.repo.Save(job)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +86,29 @@ func (s *JobService) GetJob(id int) (*model.JobResponse, error) {
 	return model.ToJobResponse(job), nil
 }
 
+func (s *JobService) ListJobs(filter *model.ListJobsFilter) (*model.PaginatedJobsResponse, error) {
+	log.Printf("List jobs %+v\n", filter)
+
+	jobs, pagination, err := s.repo.List(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to JobResponse
+	jobResponse := make([]*model.JobResponse, 0, len(jobs))
+	for _, job := range jobs {
+		jobResponse = append(jobResponse, model.ToJobResponse(job))
+	}
+
+	return &model.PaginatedJobsResponse{
+		Items:      jobResponse,
+		TotalCount: pagination.Total,
+		TotalPages: pagination.TotalPages(),
+		Page:       pagination.CurrentPage(),
+		PageSize:   pagination.PageSize,
+	}, nil
+}
+
 func (s *JobService) PauseJob(id int) (*model.JobResponse, error) {
 	log.Printf("Pausing job with ID: %d\n", id)
 	job, err := s.getJobByIDOrNotFound(id)
@@ -92,7 +121,7 @@ func (s *JobService) PauseJob(id int) (*model.JobResponse, error) {
 		return nil, ErrCannotPauseJob
 	}
 
-	err = s.Repo.Save(job)
+	err = s.repo.Save(job)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +138,7 @@ func (s *JobService) ResumeJob(id int) (*model.JobResponse, error) {
 
 	job.Resume()
 
-	err = s.Repo.Save(job)
+	err = s.repo.Save(job)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +147,7 @@ func (s *JobService) ResumeJob(id int) (*model.JobResponse, error) {
 }
 
 func (s *JobService) getJobByIDOrNotFound(id int) (*model.Job, error) {
-	job, err := s.Repo.GetByID(id)
+	job, err := s.repo.GetByID(id)
 	if err == nil {
 		return job, nil
 	}
@@ -137,5 +166,5 @@ func (s *JobService) DeleteJob(id int) error {
 		return err
 	}
 
-	return s.Repo.Delete(id)
+	return s.repo.Delete(id)
 }

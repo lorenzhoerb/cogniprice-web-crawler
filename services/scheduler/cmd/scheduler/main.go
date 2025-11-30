@@ -19,12 +19,20 @@ func main() {
 
 	fmt.Printf("Loaded config: %+v\n", cfg)
 
-	db, err := db.Connect(&cfg.DB)
+	gormDB, err := db.Connect(&cfg.DB)
 	if err != nil {
 		panic(err)
 	}
 
-	repo := postgres.New(db)
+	// reset db
+	if err := db.Reset(gormDB); err != nil {
+		panic(err)
+	}
+	if err := db.AutoMigrate(gormDB); err != nil {
+		panic(err)
+	}
+
+	repo := postgres.New(gormDB)
 	jobSvc := service.NewJobService(repo)
 	jobHandler := http.NewJobHandler(jobSvc)
 

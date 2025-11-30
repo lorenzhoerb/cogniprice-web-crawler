@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/config"
+	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -40,4 +41,18 @@ func Connect(cfg *config.DBConfig) (*gorm.DB, error) {
 
 	log.Println("Connected to PostgreSQL successfully")
 	return db, nil
+}
+
+func Reset(db *gorm.DB) error {
+	if err := db.Migrator().DropTable(&model.Job{}); err != nil {
+		return fmt.Errorf("failed to rested db: %w", err)
+	}
+	return nil
+}
+
+func AutoMigrate(db *gorm.DB) error {
+	if err := db.AutoMigrate(&model.Job{}); err != nil {
+		return fmt.Errorf("failed to auto migrate job table: %w", err)
+	}
+	return nil
 }

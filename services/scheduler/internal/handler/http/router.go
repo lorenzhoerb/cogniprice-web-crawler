@@ -12,10 +12,15 @@ func SetupRouter(jobHandler *JobHandler) *gin.Engine {
 	api := r.Group("/api/v1")
 	{
 		// Job routes
+
+		api.GET("/jobs/:id", jobHandler.GetJob)
+		api.GET("/jobs", jobHandler.ListJobs)
+
 		api.POST("/jobs", jobHandler.CreateJob)
+
 		api.POST("/jobs/:id/pause", jobHandler.PauseJob)
 		api.POST("/jobs/:id/resume", jobHandler.ResumeJob)
-		api.GET("/jobs/:id", jobHandler.GetJob)
+
 		api.DELETE("/jobs/:id", jobHandler.DeleteJob)
 	}
 

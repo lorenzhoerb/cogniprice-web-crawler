@@ -20,17 +20,21 @@ type JobResponse struct {
 	UpdatedAt      time.Time  `json:"updatedAt"`
 }
 
-type JobFilter struct {
-	URL    *string
-	status *string
+type ListJobsFilter struct {
+	URL    *string `json:"url" form:"url"`
+	Status *string `json:"status" form:"status"`
+
+	// Pagination
+	PageSize int `json:"pageSize" form:"pageSize"`
+	Page     int `json:"page" form:"page"`
 }
 
 type PaginatedJobsResponse struct {
-	Jobs       []JobResponse `json:"jobs"`
-	TotalCount int64         `json:"totalCount"`
-	TotalPages int           `json:"totalPages"`
-	Page       int           `json:"page"`
-	PageSize   int           `json:"pageSize"`
+	Page       int            `json:"page"`
+	PageSize   int            `json:"pageSize"`
+	TotalCount int64          `json:"totalCount"`
+	TotalPages int            `json:"totalPages"`
+	Items      []*JobResponse `json:"items"`
 }
 
 func ToJobResponse(j *Job) *JobResponse {
