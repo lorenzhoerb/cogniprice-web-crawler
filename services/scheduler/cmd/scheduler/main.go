@@ -62,7 +62,7 @@ func main() {
 	// start api server
 	StartAPI(ctx, r, cfg.Server.Port)
 
-	// Wait for SIGINT, SIGTERM or cancel signa l
+	// Wait for SIGINT, SIGTERM or cancel signal
 	<-ctx.Done()
 	GracefulShutdown(cfg.Server.ShutdownTimeoutSeconds)
 }
