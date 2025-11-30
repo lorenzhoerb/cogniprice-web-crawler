@@ -79,16 +79,16 @@ func main() {
 func StartScheduler(ctx context.Context, scheduler *scheduler.Scheduler) {
 	shutDownWg.Add(1)
 	go func() {
+		defer shutDownWg.Done()
 		scheduler.Run(ctx)
-		shutDownWg.Done()
 	}()
 }
 
 func StartAPI(ctx context.Context, ginEngine *gin.Engine, port int) {
-	shutDownWg.Add(1)
+	//shutDownWg.Add(1)
 	go func() {
+		defer shutDownWg.Done()
 		ginEngine.Run(fmt.Sprintf(":%d", port))
-		shutDownWg.Done()
 	}()
 }
 

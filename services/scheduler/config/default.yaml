@@ -12,4 +12,4 @@ scheduler:
 
 server:
   port: 8080
-  shutdown_timeout_seconds: 10
+  shutdown_timeout_seconds: 5
