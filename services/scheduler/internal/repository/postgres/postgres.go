@@ -2,10 +2,11 @@ package postgres
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository"
-	"github.com/lorenzhoerb/cogniprice/shared"
+	"github.com/lorenzhoerb/cogniprice/shared/pagination"
 	"gorm.io/gorm"
 )
 
@@ -42,10 +43,11 @@ func (r *jobRepository) GetByURL(url string) (*model.Job, error) {
 	return &job, nil
 }
 
-func (r *jobRepository) List(filter *model.ListJobsFilter) ([]*model.Job, *shared.Pagination, error) {
+func (r *jobRepository) List(filter *model.ListJobsFilter) ([]*model.Job, *pagination.Pagination, error) {
 	var jobs []*model.Job
 
-	pagination := shared.NewPagination(filter.Page, filter.PageSize)
+	sortBy, sortOrder := sanitizeSort(filter.SortBy, filter.SortOrder)
+	pagination := pagination.NewPagination(filter.Page, filter.PageSize)
 
 	db := r.db.Model(&model.Job{})
 
@@ -66,6 +68,7 @@ func (r *jobRepository) List(filter *model.ListJobsFilter) ([]*model.Job, *share
 
 	// Apply pagination
 	result := db.
+		Order(fmt.Sprintf("%s %s", sortBy, sortOrder)).
 		Limit(pagination.Limit()).
 		Offset(pagination.Offset()).
 		Find(&jobs)
@@ -79,4 +82,34 @@ func (r *jobRepository) List(filter *model.ListJobsFilter) ([]*model.Job, *share
 
 func (r *jobRepository) Delete(id int) error {
 	return r.db.Delete(&model.Job{}, id).Error
+}
+
+// sanitizeSort safely returns the column and direction for sorting.
+// It uses defaults if nil or invalid values are provided and prevents SQL injection.
+func sanitizeSort(sortBy, orderBy *string) (column, direction string) {
+	// Define allowed values
+	allowedColumns := map[string]bool{
+		"status":      true,
+		"url":         true,
+		"created_at":  true,
+		"next_run_at": true,
+	}
+	allowedDirections := map[string]bool{
+		"asc":  true,
+		"desc": true,
+	}
+
+	// Default values
+	column = "created_at"
+	direction = "asc"
+
+	if sortBy != nil && allowedColumns[*sortBy] {
+		column = *sortBy
+	}
+
+	if orderBy != nil && allowedDirections[*orderBy] {
+		direction = *orderBy
+	}
+
+	return
 }

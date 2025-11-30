@@ -27,6 +27,10 @@ type ListJobsFilter struct {
 	// Pagination
 	PageSize int `json:"pageSize" form:"pageSize"`
 	Page     int `json:"page" form:"page"`
+
+	// Sorting
+	SortOrder *string `json:"sortOrder" form:"sortOrder" binding:"omitempty,sortorder"`
+	SortBy    *string `json:"sortBy" form:"sortBy" binding:"omitempty,jobsortcol"`
 }
 
 type PaginatedJobsResponse struct {

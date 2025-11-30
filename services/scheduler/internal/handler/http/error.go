@@ -102,6 +102,10 @@ func validationErrorMsg(fe validator.FieldError) string {
 		return "interval must be a valid duration (e.g., '10s', '5m', '1h') and at least 1 hour"
 	case "jobstatus":
 		return "status must be one of: scheduled, in_progress, paused, failed"
+	case "sortorder":
+		return "must be one of: asc, desc"
+	case "jobsortcol":
+		return "must be one of: created_at, next_run_at, url, status"
 	default:
 		return fe.Error()
 	}

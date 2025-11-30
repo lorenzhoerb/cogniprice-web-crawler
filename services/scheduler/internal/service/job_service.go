@@ -7,7 +7,7 @@ import (
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository"
-	"github.com/lorenzhoerb/cogniprice/shared"
+	"github.com/lorenzhoerb/cogniprice/shared/pagination"
 )
 
 // JobRepository defines methods to manage jobs in the scheduler service.
@@ -25,7 +25,7 @@ type JobRepository interface {
 	GetByURL(url string) (*model.Job, error)
 
 	// List all jobs and filters them
-	List(filter *model.ListJobsFilter) ([]*model.Job, *shared.Pagination, error)
+	List(filter *model.ListJobsFilter) ([]*model.Job, *pagination.Pagination, error)
 
 	// PutJob inserts or updates a job.
 	// If job.ID is empty, an ID is generated and assigned to the same object.
