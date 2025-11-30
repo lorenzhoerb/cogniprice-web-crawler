@@ -1,0 +1,13 @@
+db:
+  host:     "localhost"
+  port:     5432
+  user:     "postgres"
+  password: ""                # set with environment variable APP_DB_PASSWORD
+  dbname:   "cp_scheduler"
+  sslmode:  "disable"
+  
+scheduler:
+  interval: "5m"
+
+server:
+  port: 8080

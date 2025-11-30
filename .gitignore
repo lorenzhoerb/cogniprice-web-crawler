@@ -35,3 +35,10 @@ Thumbs.db
 # Build directories
 bin/
 _build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+# Local config files
+services/scheduler/config/local.yaml

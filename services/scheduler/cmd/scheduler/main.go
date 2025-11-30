@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/config"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/db"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/handler/http"
@@ -10,14 +12,14 @@ import (
 )
 
 func main() {
-	db, err := db.Connect(&config.DBConfig{
-		Host:     "localhost",
-		Port:     5432,
-		User:     "postgres",
-		Password: "1234",
-		DBName:   "cp_scheduler",
-		SSLMode:  "disable",
-	})
+	cfg, err := config.Load("local")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Loaded config: %+v\n", cfg)
+
+	db, err := db.Connect(&cfg.DB)
 	if err != nil {
 		panic(err)
 	}
@@ -30,5 +32,5 @@ func main() {
 	validator.RegisterValidators()
 	// register application middleware
 
-	r.Run(":8080")
+	r.Run(fmt.Sprintf(":%d", cfg.Server.Port))
 }
