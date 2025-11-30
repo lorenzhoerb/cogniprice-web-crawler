@@ -31,7 +31,7 @@ type ServerConfig struct {
 type SchedulerConfig struct {
 	// Use string in YAML, then parse to time.Duration automatically
 	Interval  time.Duration `mapstructure:"interval"`
-	BatchSize int           `mapstructure:batch_size`
+	BatchSize int           `mapstructure:"batch_size"`
 }
 
 // Load loads the configuration based on the environment
