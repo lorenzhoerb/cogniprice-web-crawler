@@ -10,7 +10,7 @@ type CreateJobRequest struct {
 type JobResponse struct {
 	ID             uint       `json:"id"`
 	URL            string     `json:"url"`
-	Status         string     `json:"status"`
+	Status         JobStatus  `json:"status"`
 	Interval       string     `json:"interval"`
 	RetryAttempts  int        `json:"retryAttempts"`
 	PauseRequested bool       `json:"pauseRequested"`
@@ -21,8 +21,8 @@ type JobResponse struct {
 }
 
 type ListJobsFilter struct {
-	URL    *string `json:"url" form:"url"`
-	Status *string `json:"status" form:"status"`
+	URL    *string    `json:"url" form:"url"`
+	Status *JobStatus `json:"status" form:"status" binding:"omitempty,jobstatus"`
 
 	// Pagination
 	PageSize int `json:"pageSize" form:"pageSize"`
@@ -41,7 +41,7 @@ func ToJobResponse(j *Job) *JobResponse {
 	return &JobResponse{
 		ID:             j.ID,
 		URL:            j.URL,
-		Status:         j.Status.String(),
+		Status:         j.Status,
 		Interval:       j.Interval.String(),
 		RetryAttempts:  j.RetryAttempts,
 		PauseRequested: j.PauseRequested,

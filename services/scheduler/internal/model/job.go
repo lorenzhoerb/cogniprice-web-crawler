@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var ErrCannotPause = errors.New("cannot pause job in current state")
+
 // JobStatus represents the current status of a job.
 //
 // Status values:
@@ -14,64 +16,42 @@ import (
 //   - Running: The job was dispatched successfully and is currently executing.
 //   - Paused: The job will not be scheduled until resumed.
 //   - Failed: The job exceeded its failure/retry limit and is no longer eligible for dispatch.
-type JobStatus int
+type JobStatus string
 
 const (
-	Scheduled = iota
-	InProgress
-	Paused
-	Failed
+	JobStatusScheduled  JobStatus = "scheduled"
+	JobStatusInProgress JobStatus = "in_progress"
+	JobStatusPaused     JobStatus = "paused"
+	JobStatusFailed     JobStatus = "failed"
 )
 
-func (j JobStatus) String() string {
-	switch j {
-	case Scheduled:
-		return "SCHEDULED"
-	case InProgress:
-		return "IN_PROGRESS"
-	case Paused:
-		return "PAUSED"
-	case Failed:
-		return "FAILED"
-	default:
-		return "UNKNOWN"
+func (s JobStatus) IsValid() bool {
+	switch s {
+	case JobStatusScheduled, JobStatusInProgress, JobStatusPaused, JobStatusFailed:
+		return true
 	}
+	return false
 }
 
-func (j JobStatus) MarshalJSON() ([]byte, error) {
-	return json.Marshal(j.String())
-}
-
-func (j *JobStatus) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
+func (s *JobStatus) UnmarshalJSON(b []byte) error {
+	var val string
+	if err := json.Unmarshal(b, &val); err != nil {
 		return err
 	}
-	switch s {
-	case "scheduled":
-		*j = Scheduled
-	case "inProgress":
-		*j = InProgress
-	case "paused":
-		*j = Paused
-	case "failed":
-		*j = Failed
-	default:
-		return fmt.Errorf("unknown JobStatus: %s", s)
+	tmp := JobStatus(val)
+	if !tmp.IsValid() {
+		return fmt.Errorf("invalid job status: %s", val)
 	}
+	*s = tmp
 	return nil
 }
-
-var (
-	ErrCannotPause = errors.New("cannot pause job in current state")
-)
 
 // Job represent a crawl job are dispatched regularly.
 type Job struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
 	URL            string    `grom:"not null;uniqueIndex"`
 	RetryAttempts  int       `gorm:"default:0;check:retry_attempts >= 0"`
-	Status         JobStatus `gorm:"type:int;not null"`
+	Status         JobStatus `gorm:"type:varchar(20);not null"`
 	Interval       time.Duration
 	PauseRequested bool
 	DispatchedAt   *time.Time
@@ -87,24 +67,24 @@ func (j *Job) IsDue() bool {
 // ScheduleNextRun updates NextRunAt based on Interval
 func (j *Job) ScheduleNextRun() {
 	j.NextRunAt = time.Now().Add(j.Interval)
-	j.Status = Scheduled
+	j.Status = JobStatusScheduled
 }
 
 // Pause sets the job status to Paused if allowed
 func (j *Job) Pause() error {
-	if j.Status == Failed {
+	if j.Status == JobStatusFailed {
 		return ErrCannotPause
 	}
-	j.Status = Paused
+	j.Status = JobStatusPaused
 	return nil
 }
 
 // Resume sets the job status to Scheduled if it was paused
 func (j *Job) Resume() error {
-	if j.Status == Scheduled || j.Status == InProgress {
+	if j.Status == JobStatusScheduled || j.Status == JobStatusInProgress {
 		return nil
 	}
-	j.Status = Scheduled
+	j.Status = JobStatusScheduled
 	j.RetryAttempts = 0
 	j.ScheduleNextRun()
 	return nil

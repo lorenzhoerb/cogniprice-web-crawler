@@ -56,7 +56,7 @@ func ErrorHandler() gin.HandlerFunc {
 func handleValidationErrors(c *gin.Context, verrs validator.ValidationErrors) {
 	apiErr := &APIError{
 		Message: "one or more fields are invalid",
-		Code:    "INVALID_REQUEST_PAYLOAD",
+		Code:    "INVALID_REQUEST",
 		Errors:  []FieldError{},
 	}
 
@@ -100,6 +100,8 @@ func validationErrorMsg(fe validator.FieldError) string {
 		return "must be at most " + fe.Param() + " characters long"
 	case "interval":
 		return "interval must be a valid duration (e.g., '10s', '5m', '1h') and at least 1 hour"
+	case "jobstatus":
+		return "status must be one of: scheduled, in_progress, paused, failed"
 	default:
 		return fe.Error()
 	}

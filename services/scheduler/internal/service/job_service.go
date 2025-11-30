@@ -64,7 +64,7 @@ func (s *JobService) CreateJob(req *model.CreateJobRequest) (*model.JobResponse,
 	job := &model.Job{
 		URL:       req.URL,
 		Interval:  interval,
-		Status:    model.Scheduled,
+		Status:    model.JobStatusScheduled,
 		NextRunAt: time.Now(),
 	}
 

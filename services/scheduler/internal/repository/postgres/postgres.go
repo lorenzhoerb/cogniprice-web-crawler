@@ -54,6 +54,11 @@ func (r *jobRepository) List(filter *model.ListJobsFilter) ([]*model.Job, *share
 		db = db.Where("url ILIKE ?", "%"+*filter.URL+"%")
 	}
 
+	// Apply Status filter if provided
+	if filter.Status != nil {
+		db = db.Where("status = ?", filter.Status)
+	}
+
 	// Get total count (ignoring limit/offset)
 	if err := db.Count(&pagination.Total).Error; err != nil {
 		return nil, nil, err

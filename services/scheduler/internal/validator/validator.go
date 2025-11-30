@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 )
 
 // interval must be at least 1 hour
@@ -23,8 +24,18 @@ var interval validator.Func = func(fl validator.FieldLevel) bool {
 	return true
 }
 
+// interval must be at least 1 hour
+var jobStatus validator.Func = func(fl validator.FieldLevel) bool {
+	status, ok := fl.Field().Interface().(model.JobStatus)
+	if !ok {
+		return false
+	}
+	return status.IsValid()
+}
+
 func RegisterValidators() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		v.RegisterValidation("interval", interval)
+		v.RegisterValidation("jobstatus", jobStatus)
 	}
 }
