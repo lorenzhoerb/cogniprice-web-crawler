@@ -46,7 +46,7 @@ type Scheduler struct {
 func NewScheduler(cfg *config.SchedulerConfig, repo JobRepository, dispatcher Dispatcher) *Scheduler {
 	return &Scheduler{
 		Repo:       repo,
-		Interval:   *cfg.Interval,
+		Interval:   cfg.Interval,
 		Dispatcher: dispatcher,
 	}
 }
