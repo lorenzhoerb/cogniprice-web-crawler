@@ -24,12 +24,14 @@ type DBConfig struct {
 }
 
 type ServerConfig struct {
-	Port int `mapstructure:"port"`
+	Port                   int `mapstructure:"port"`
+	ShutdownTimeoutSeconds int `mapstructure:"shutdown_timeout_seconds"`
 }
 
 type SchedulerConfig struct {
 	// Use string in YAML, then parse to time.Duration automatically
-	Interval time.Duration `mapstructure:"interval"`
+	Interval  time.Duration `mapstructure:"interval"`
+	BatchSize int           `mapstructure:batch_size`
 }
 
 // Load loads the configuration based on the environment

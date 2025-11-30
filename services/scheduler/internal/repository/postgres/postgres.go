@@ -3,11 +3,13 @@ package postgres
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository"
 	"github.com/lorenzhoerb/cogniprice/shared/pagination"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type jobRepository struct {
@@ -20,6 +22,32 @@ func New(db *gorm.DB) *jobRepository {
 
 func (r *jobRepository) Save(job *model.Job) error {
 	return r.db.Save(job).Error
+}
+
+func (r *jobRepository) SaveAll(jobs []*model.Job) error {
+	return r.db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(&jobs).Error
+}
+
+// Get due Jobs ,
+func (r *jobRepository) GetDue(limit int) ([]*model.Job, error) {
+	var jobs []*model.Job
+	db := r.db.
+		Where("next_run_at <= ?", time.Now()).
+		Where("status = ? ", model.JobStatusScheduled).
+		Order("next_run_at ASC")
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
+	result := db.Find(&jobs)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return jobs, nil
 }
 
 func (r *jobRepository) GetByID(id int) (*model.Job, error) {

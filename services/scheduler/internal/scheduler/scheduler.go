@@ -20,12 +20,12 @@ type Dispatcher interface {
 
 //go:generate mockgen -destination=../../mocks/scheduler_job_repository.go -package=mocks github.com/lorenzhoerb/cogniprice/services/scheduler/internal/scheduler JobRepository
 type JobRepository interface {
-	// ListDuoJobs returns up to 'limit' duo jobs.
+	// ListDue returns up to 'limit' duo jobs.
 	// If limit == 0, all duo jobs are returned.
-	GetDueJobs(limit int) ([]*model.Job, error)
+	GetDue(limit int) ([]*model.Job, error)
 
 	// UpdateJobs batch updates all jobs specified
-	UpdateJobs(job []*model.Job) error
+	SaveAll(job []*model.Job) error
 }
 
 // Scheduler manages the periodic dispatching of due jobs to the worker queue.
@@ -44,15 +44,22 @@ type Scheduler struct {
 }
 
 func NewScheduler(cfg *config.SchedulerConfig, repo JobRepository, dispatcher Dispatcher) *Scheduler {
+	batchSize := cfg.BatchSize
+	if batchSize <= 0 {
+		batchSize = 100
+	}
+
 	return &Scheduler{
 		Repo:       repo,
 		Interval:   cfg.Interval,
+		BatchSize:  batchSize,
 		Dispatcher: dispatcher,
 	}
 }
 
 // Start starts the job cycle
 func (s *Scheduler) Run(ctx context.Context) {
+	log.Printf("scheduler started: interval=%s, batchSize=%d\n", s.Interval, s.BatchSize)
 	ticker := time.NewTicker(s.Interval)
 	defer ticker.Stop()
 	for {
@@ -70,8 +77,8 @@ func (s *Scheduler) Run(ctx context.Context) {
 // dispatchDueJobs dispatches jobs due.
 // Upon dispatching it ensures that the job status is set to dispatched.
 func (s *Scheduler) dispatchDueJobs() error {
-	log.Println("dispatching due jobs")
-	dueJobs, err := s.Repo.GetDueJobs(s.BatchSize)
+	log.Println("[INFO] Checking for due jobs...")
+	dueJobs, err := s.Repo.GetDue(s.BatchSize)
 	if err != nil {
 		return fmt.Errorf("get due jobs failed: %w", err)
 	}
@@ -81,6 +88,7 @@ func (s *Scheduler) dispatchDueJobs() error {
 		return nil
 	}
 
+	log.Printf("[INFO] Found %d jobs due, preparing to dispatch", len(dueJobs))
 	dispatchedAt := time.Now()
 
 	var jobsDispatched []model.JobDispatched
@@ -97,7 +105,7 @@ func (s *Scheduler) dispatchDueJobs() error {
 	}
 
 	// update job metadata
-	if err := s.Repo.UpdateJobs(dueJobs); err != nil {
+	if err := s.Repo.SaveAll(dueJobs); err != nil {
 		return fmt.Errorf("failed to update job status to DISPATCHED: %w", err)
 	}
 

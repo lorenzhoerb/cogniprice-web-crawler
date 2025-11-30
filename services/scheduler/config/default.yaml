@@ -7,7 +7,9 @@ db:
   sslmode:  "disable"
   
 scheduler:
-  interval: "5m"
+  interval: "2s"
+  batch_size: 50
 
 server:
   port: 8080
+  shutdown_timeout_seconds: 10
