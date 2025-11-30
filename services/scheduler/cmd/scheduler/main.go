@@ -12,22 +12,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/config"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/db"
+	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/dispatcher"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/handler/http"
-	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository/postgres"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/scheduler"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/validator"
 )
-
-type logDispatcher struct{}
-
-func (d *logDispatcher) DispatchJobs(jobs []model.JobDispatched) error {
-	for _, job := range jobs {
-		fmt.Printf("dispatching job: id=%d, url=%s\n", uint64(job.ID), job.URL)
-	}
-	return nil
-}
 
 var shutDownWg sync.WaitGroup
 
@@ -64,7 +55,7 @@ func main() {
 	validator.RegisterValidators()
 	// register application middleware
 
-	scheduler := scheduler.NewScheduler(&cfg.Scheduler, repo, &logDispatcher{})
+	scheduler := scheduler.NewScheduler(&cfg.Scheduler, repo, dispatcher.NewLogDispatcher())
 
 	StartScheduler(ctx, scheduler)
 
