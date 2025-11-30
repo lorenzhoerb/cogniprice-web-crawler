@@ -86,7 +86,7 @@ func (s *Scheduler) dispatchDueJobs() error {
 	var jobsDispatched []model.JobDispatched
 	for _, job := range dueJobs {
 		// set job metadata
-		job.Status = model.JobStatus(model.InProgress)
+		job.Status = model.JobStatusInProgress
 		job.DispatchedAt = &dispatchedAt
 
 		jobsDispatched = append(jobsDispatched, model.JobDispatched{
