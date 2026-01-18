@@ -54,6 +54,7 @@ type Job struct {
 	Status         JobStatus `gorm:"type:varchar(20);not null"`
 	Interval       time.Duration
 	PauseRequested bool
+	LastCrawledAt  *time.Time
 	DispatchedAt   *time.Time
 	NextRunAt      time.Time
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
@@ -64,27 +65,57 @@ func (j *Job) IsDue() bool {
 	return j.NextRunAt.After(time.Now())
 }
 
-// ScheduleNextRun updates NextRunAt based on Interval
+// ScheduleNextRun sets the NextRunAt and Status for the job.
+// If the job has never been crawled (LastCrawledAt is nil),
+// it schedules the job to run immediately (now).
+// Otherwise, it schedules the next run as the later of:
+//   - LastCrawledAt + Interval
+//   - the current time (to avoid scheduling in the past).
 func (j *Job) ScheduleNextRun() {
-	j.NextRunAt = time.Now().Add(j.Interval)
+	var nextRun time.Time
+
+	if j.LastCrawledAt != nil {
+		nextRun = j.LastCrawledAt.Add(j.Interval)
+		// ensure not scheduling in the past
+		if nextRun.Before(time.Now()) {
+			nextRun = time.Now()
+		}
+	} else {
+		nextRun = time.Now()
+	}
+
+	j.NextRunAt = nextRun
 	j.Status = JobStatusScheduled
 }
 
-// Pause sets the job status to Paused if allowed
+// Pause pauses the job if the current state allows it.
+//
+// Behavior by job status:
+//   - JobStatusInProgress: marks the job as pause-requested.
+//   - JobStatusFailed: returns ErrCannotPause.
+//   - Any other state: immediately sets the job status to JobStatusPaused.
 func (j *Job) Pause() error {
-	if j.Status == JobStatusFailed {
+	switch j.Status {
+	case JobStatusFailed:
 		return ErrCannotPause
+	case JobStatusInProgress:
+		j.PauseRequested = true
+		return nil
+	default:
+		j.Status = JobStatusPaused
+		return nil
 	}
-	j.Status = JobStatusPaused
-	return nil
 }
 
-// Resume sets the job status to Scheduled if it was paused
+// Resume restarts a job if it was paused or failed.
+//
+//   - If the job is paused or failed, RetryAttempts is reset to 0,
+//     the next run is scheduled, and the status becomes Scheduled.
+//   - Jobs that are already scheduled or in progress are not changed.
 func (j *Job) Resume() error {
 	if j.Status == JobStatusScheduled || j.Status == JobStatusInProgress {
 		return nil
 	}
-	j.Status = JobStatusScheduled
 	j.RetryAttempts = 0
 	j.ScheduleNextRun()
 	return nil

@@ -11,13 +11,11 @@ import (
 )
 
 // JobRepository defines methods to manage jobs in the scheduler service.
-type JobRepository interface {
-	// ListDuoJobs returns up to 'limit' duo jobs.
-	// If limit == 0, all duo jobs are returned.
-	//GetDueJobs(limit int) ([]*model.Job, error)
 
-	// GetJob retrieves a job by its ID.
-	//GetJob(id int) (*model.Job, error)
+//go:generate mockgen -destination=../../mocks/mock_job_repository_service.go -package=mocks github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service JobRepository
+type JobRepository interface {
+
+	// GetJobByID retrieves a job by its ID. Returns null and NotFound error if not found.
 	GetByID(id int) (*model.Job, error)
 
 	// GetByURL retrieves a job by its URL.
@@ -76,7 +74,7 @@ func (s *JobService) CreateJob(req *model.CreateJobRequest) (*model.JobResponse,
 	return model.ToJobResponse(job), nil
 }
 
-func (s *JobService) GetJob(id int) (*model.JobResponse, error) {
+func (s *JobService) GetJobByID(id int) (*model.JobResponse, error) {
 	log.Printf("Retrieving job with ID: %d\n", id)
 	job, err := s.getJobByIDOrNotFound(id)
 	if err != nil {
@@ -109,6 +107,24 @@ func (s *JobService) ListJobs(filter *model.ListJobsFilter) (*model.PaginatedJob
 	}, nil
 }
 
+// PauseJob attempts to pause the job with the given ID.
+//
+// Behavior:
+//   - If the job does not exist, it returns ErrNotFound.
+//   - If the job is in Scheduled state, it is immediately paused
+//     and the status becomes Paused.
+//   - If the job is InProgress, the job continues running, the
+//     PauseRequested flag is set to true, and the status remains InProgress.
+//   - If the job is in a Failed state, pausing is not allowed and
+//     ErrCannotPauseJob is returned.
+//
+// Side effects:
+//   - Successfully paused or pause-requested jobs are persisted.
+//   - Jobs that cannot be paused are not saved.
+//
+// Returns:
+//   - A JobResponse reflecting the current job state.
+//   - An error if the job cannot be paused or does not exist.
 func (s *JobService) PauseJob(id int) (*model.JobResponse, error) {
 	log.Printf("Pausing job with ID: %d\n", id)
 	job, err := s.getJobByIDOrNotFound(id)

@@ -18,7 +18,7 @@ type Dispatcher interface {
 	DispatchJobs(jobs []model.JobDispatched) error
 }
 
-//go:generate mockgen -destination=../../mocks/scheduler_job_repository.go -package=mocks github.com/lorenzhoerb/cogniprice/services/scheduler/internal/scheduler JobRepository
+//go:generate mockgen -source=job_repository.go -destination=../../mocks/scheduler_job_repository.go -package=mocks -mock_name=MockSchedulerJobRepository
 type JobRepository interface {
 	// ListDue returns up to 'limit' duo jobs.
 	// If limit == 0, all duo jobs are returned.

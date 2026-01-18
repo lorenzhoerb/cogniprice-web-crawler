@@ -10,13 +10,23 @@ import (
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service"
 )
 
-type JobHandler struct {
-	Svc service.JobService
+//go:generate mockgen -destination=../../../mocks/mock_job_service.go -package=mocks github.com/lorenzhoerb/cogniprice/services/scheduler/internal/api/http JobService
+type JobService interface {
+	CreateJob(*model.CreateJobRequest) (*model.JobResponse, error)
+	GetJobByID(int) (*model.JobResponse, error)
+	ListJobs(*model.ListJobsFilter) (*model.PaginatedJobsResponse, error)
+	PauseJob(int) (*model.JobResponse, error)
+	ResumeJob(int) (*model.JobResponse, error)
+	DeleteJob(int) error
 }
 
-func NewJobHandler(svc *service.JobService) *JobHandler {
+type JobHandler struct {
+	Svc JobService
+}
+
+func NewJobHandler(svc JobService) *JobHandler {
 	return &JobHandler{
-		Svc: *svc,
+		Svc: svc,
 	}
 }
 
@@ -46,13 +56,13 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 		return
 	}
 
-	jobResp, err := h.Svc.GetJob(id)
+	jobResp, err := h.Svc.GetJobByID(id)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(200, jobResp)
+	c.JSON(201, jobResp)
 }
 
 // ListJobs retrieves jobs and returns it as a pagination.

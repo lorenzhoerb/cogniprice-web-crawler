@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/api/http"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/config"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/db"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/dispatcher"
-	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/handler/http"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository/postgres"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/scheduler"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service"
