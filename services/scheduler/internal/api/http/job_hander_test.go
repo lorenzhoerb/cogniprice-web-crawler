@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
+	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/api/http/middleware"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/validator"
@@ -21,7 +22,7 @@ func setupRouter(handler *JobHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.Use(ErrorHandler())
+	r.Use(middleware.ErrorHandler())
 
 	r.POST("/jobs", handler.CreateJob)
 	r.GET("/jobs/:id", handler.GetJob)

@@ -2,12 +2,15 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/api/http/middleware"
 )
 
 // SetupRouter wires up all routes and returns a *gin.Engine
 func SetupRouter(jobHandler *JobHandler) *gin.Engine {
 	r := gin.Default() // includes Logger + Recovery middleware
-	r.Use(ErrorHandler())
+
+	r.Use(middleware.ErrorHandler())
+	r.Use(middleware.CORSMiddleware())
 
 	api := r.Group("/api/v1")
 	{

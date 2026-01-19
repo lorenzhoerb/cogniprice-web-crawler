@@ -39,7 +39,7 @@ func (p *Pagination) Limit() int {
 
 // Offset returns the SQL offset
 func (p *Pagination) Offset() int {
-	return (1 - p.Page) * p.PageSize
+	return (p.Page - 1) * p.PageSize
 }
 
 // TotalPages calculates the number of pages
