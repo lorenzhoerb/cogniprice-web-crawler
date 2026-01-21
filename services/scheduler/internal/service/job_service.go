@@ -7,7 +7,9 @@ import (
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository"
+	"github.com/lorenzhoerb/cogniprice/shared/logger"
 	"github.com/lorenzhoerb/cogniprice/shared/pagination"
+	"go.uber.org/zap"
 )
 
 // JobRepository defines methods to manage jobs in the scheduler service.
@@ -45,7 +47,11 @@ func NewJobService(repo JobRepository) *JobService {
 }
 
 func (s *JobService) CreateJob(req *model.CreateJobRequest) (*model.JobResponse, error) {
-	log.Printf("Creating job with URL: %s and Interval: %s\n", req.URL, req.Interval)
+	logger.Log.Info("creating job request",
+		zap.String("url", req.URL),
+		zap.String("interval", req.Interval),
+	)
+
 	interval, _ := time.ParseDuration(req.Interval) // already validated
 
 	// Check for existing job with the same URL
@@ -75,7 +81,8 @@ func (s *JobService) CreateJob(req *model.CreateJobRequest) (*model.JobResponse,
 }
 
 func (s *JobService) GetJobByID(id int) (*model.JobResponse, error) {
-	log.Printf("Retrieving job with ID: %d\n", id)
+	logger.Log.Debug("retrieving job by ID", zap.Int("jobID", id))
+
 	job, err := s.getJobByIDOrNotFound(id)
 	if err != nil {
 		return nil, err
@@ -85,6 +92,8 @@ func (s *JobService) GetJobByID(id int) (*model.JobResponse, error) {
 }
 
 func (s *JobService) ListJobs(filter *model.ListJobsFilter) (*model.PaginatedJobsResponse, error) {
+	logger.Log.Debug("listing jobs", zap.Any("filter", filter))
+
 	log.Printf("List jobs %+v\n", filter)
 
 	jobs, pagination, err := s.repo.List(filter)

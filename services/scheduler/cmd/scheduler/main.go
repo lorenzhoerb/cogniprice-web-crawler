@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -18,33 +17,37 @@ import (
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/scheduler"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/validator"
+	"github.com/lorenzhoerb/cogniprice/shared/logger"
+	"go.uber.org/zap"
 )
 
 var shutDownWg sync.WaitGroup
 
 func main() {
+	logger.Init(true)
+
 	// Context that cancels on SIGINT or SIGTERM
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	cfg, err := config.Load("local")
 	if err != nil {
-		panic(err)
+		logger.Log.Fatal("failed to load config", zap.Error(err))
 	}
 
-	fmt.Printf("Loaded config: %+v\n", cfg)
+	logger.Log.Info("config loaded", zap.String("env", "local"))
 
 	gormDB, err := db.Connect(&cfg.DB)
 	if err != nil {
-		panic(err)
+		logger.Log.Fatal("failed to connect to DB", zap.Error(err))
 	}
 
 	// reset db
 	if err := db.Reset(gormDB); err != nil {
-		panic(err)
+		logger.Log.Fatal("failed to reset DB", zap.Error(err))
 	}
 	if err := db.AutoMigrate(gormDB); err != nil {
-		panic(err)
+		logger.Log.Fatal("failed to auto-migrate DB", zap.Error(err))
 	}
 
 	repo := postgres.New(gormDB)
@@ -71,7 +74,9 @@ func StartScheduler(ctx context.Context, scheduler *scheduler.Scheduler) {
 	shutDownWg.Add(1)
 	go func() {
 		defer shutDownWg.Done()
+		logger.Log.Info("scheduler started")
 		scheduler.Run(ctx)
+		logger.Log.Info("scheduler stopped")
 	}()
 }
 
@@ -85,7 +90,7 @@ func StartAPI(ctx context.Context, ginEngine *gin.Engine, port int) {
 
 func GracefulShutdown(timeoutSeconds int) {
 	timeout := time.Duration(timeoutSeconds) * time.Second
-	log.Printf("[INFO] shutting down with timeout period of %s ...\n", timeout)
+	logger.Log.Info("shutting down", zap.Duration("timeout", timeout))
 
 	done := make(chan struct{})
 	go func() {
@@ -95,8 +100,9 @@ func GracefulShutdown(timeoutSeconds int) {
 
 	select {
 	case <-done:
-		log.Println("[INFO] all goroutines finished, exiting")
+		logger.Log.Info("all goroutines finished, exiting")
 	case <-time.After(timeout):
-		log.Println("[INFO] scheduler and server stopped, exiting")
+		logger.Log.Warn("shutdown timeout reached, exiting")
+
 	}
 }

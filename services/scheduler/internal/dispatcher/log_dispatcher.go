@@ -1,9 +1,9 @@
 package dispatcher
 
 import (
-	"fmt"
-
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
+	"github.com/lorenzhoerb/cogniprice/shared/logger"
+	"go.uber.org/zap"
 )
 
 // logDispatcher is a lightweight mock dispatcher.
@@ -20,7 +20,11 @@ func NewLogDispatcher() *logDispatcher {
 
 func (d *logDispatcher) DispatchJobs(jobs []model.JobDispatched) error {
 	for _, job := range jobs {
-		fmt.Printf("dispatching job: id=%d, url=%s\n", uint64(job.ID), job.URL)
+		logger.Log.Info("dispatching job",
+			// structured fields
+			zap.Uint64("jobID", uint64(job.ID)),
+			zap.String("url", job.URL),
+		)
 	}
 	return nil
 }

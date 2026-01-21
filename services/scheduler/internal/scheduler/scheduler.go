@@ -3,22 +3,23 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/config"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
+	"github.com/lorenzhoerb/cogniprice/shared/logger"
+	"go.uber.org/zap"
 )
 
 // Dispatcher handles job submissions to the worker queue.
-//
-//go:generate mockgen -destination=../../mocks/mock_dispatcher.go -package=mocks github.com/lorenzhoerb/cogniprice/services/scheduler/internal/scheduler Dispatcher
+
+//go:generate mockgen -destination=../../mocks/mock_dispatcher.go -package=mocks . Dispatcher
 type Dispatcher interface {
 	// Dispatches all jobs as a batch to the worker queue.
 	DispatchJobs(jobs []model.JobDispatched) error
 }
 
-//go:generate mockgen -source=job_repository.go -destination=../../mocks/scheduler_job_repository.go -package=mocks -mock_name=MockSchedulerJobRepository
+//go:generate mockgen -destination=../../mocks/mock_scheduler_job_repository.go -mock_names=JobRepository=MockSchedulerJobRepository -package=mocks . JobRepository
 type JobRepository interface {
 	// ListDue returns up to 'limit' duo jobs.
 	// If limit == 0, all duo jobs are returned.
@@ -59,12 +60,16 @@ func NewScheduler(cfg *config.SchedulerConfig, repo JobRepository, dispatcher Di
 
 // Start starts the job cycle
 func (s *Scheduler) Run(ctx context.Context) {
-	log.Printf("scheduler started: interval=%s, batchSize=%d\n", s.Interval, s.BatchSize)
+	logger.Log.Info("scheduler started",
+		zap.String("timeInterval", s.Interval.String()),
+		zap.Int("batchSize", s.BatchSize))
+
 	ticker := time.NewTicker(s.Interval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Log.Info("scheduler stopped due to context cancellation")
 			return
 		case <-ticker.C:
 			if err := s.dispatchDueJobs(); err != nil {
@@ -77,18 +82,23 @@ func (s *Scheduler) Run(ctx context.Context) {
 // dispatchDueJobs dispatches jobs due.
 // Upon dispatching it ensures that the job status is set to dispatched.
 func (s *Scheduler) dispatchDueJobs() error {
-	log.Println("[INFO] Checking for due jobs...")
+	logger.Log.Debug("checking for due jobs")
 	dueJobs, err := s.Repo.GetDue(s.BatchSize)
 	if err != nil {
+		logger.Log.Error("failed to fetch due jobs", zap.Error(err))
 		return fmt.Errorf("get due jobs failed: %w", err)
 	}
 
 	if len(dueJobs) == 0 {
+
 		// no due jobs to dispatch
 		return nil
 	}
 
-	log.Printf("[INFO] Found %d jobs due, preparing to dispatch", len(dueJobs))
+	logger.Log.Info("found due jobs to dispatch",
+		zap.Int("jobCount", len(dueJobs)),
+	)
+
 	dispatchedAt := time.Now()
 
 	var jobsDispatched []model.JobDispatched
@@ -114,6 +124,10 @@ func (s *Scheduler) dispatchDueJobs() error {
 		// TODO: Rollback
 		return fmt.Errorf("failed to dispatch jobs: %w", err)
 	}
+
+	logger.Log.Info("successfully dispatched jobs",
+		zap.Int("jobCount", len(jobsDispatched)),
+	)
 
 	return nil
 }

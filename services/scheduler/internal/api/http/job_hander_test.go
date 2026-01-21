@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang/mock/gomock"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/api/http/middleware"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/model"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/validator"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/mocks"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func setupRouter(handler *JobHandler) *gin.Engine {
