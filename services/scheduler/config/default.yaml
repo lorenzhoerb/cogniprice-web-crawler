@@ -10,6 +10,9 @@ scheduler:
   interval: "2s"
   batch_size: 50
 
+rabbit:
+  url: "amqp://dev:dev@localhost:5672/"
+
 server:
   port: 8082
   shutdown_timeout_seconds: 5

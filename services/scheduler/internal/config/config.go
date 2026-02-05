@@ -12,6 +12,11 @@ type Config struct {
 	DB        DBConfig        `mapstructure:"db"`
 	Scheduler SchedulerConfig `mapstructure:"scheduler"`
 	Server    ServerConfig    `mapstructure:"server"`
+	Rabbit    RabbitConfig    `mapstructure:"rabbit"`
+}
+
+type RabbitConfig struct {
+	Url string `mapstructure:"url"`
 }
 
 type DBConfig struct {

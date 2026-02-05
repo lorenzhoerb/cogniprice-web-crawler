@@ -13,6 +13,7 @@ import (
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/config"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/db"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/dispatcher"
+	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/messaging"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/repository/postgres"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/scheduler"
 	"github.com/lorenzhoerb/cogniprice/services/scheduler/internal/service"
@@ -50,15 +51,36 @@ func main() {
 		logger.Log.Fatal("failed to auto-migrate DB", zap.Error(err))
 	}
 
+	// rabbit setup
+	rabbit, err := messaging.NewRabbit(cfg.Rabbit.Url)
+	if err != nil {
+		logger.Log.Fatal("failed to connect to rabbit mq", zap.Error(err))
+	}
+	defer rabbit.Close()
+
+	ch, err := rabbit.Conn.Channel()
+	if err != nil {
+		logger.Log.Fatal("failed to open topology channel", zap.Error(err))
+	}
+
+	if err = messaging.DeclareTopology(ch); err != nil {
+		logger.Log.Fatal("failed to declare topology", zap.Error(err))
+	}
+	ch.Close()
+
 	repo := postgres.New(gormDB)
 	jobSvc := service.NewJobService(repo)
 	jobHandler := http.NewJobHandler(jobSvc)
+	dispatcher, err := dispatcher.NewRabbitDispatcher(rabbit)
+	if err != nil {
+		logger.Log.Fatal("failed to init rabbit dispatcher", zap.Error(err))
+	}
 
 	r := http.SetupRouter(jobHandler)
 	validator.RegisterValidators()
 	// register application middleware
 
-	scheduler := scheduler.NewScheduler(&cfg.Scheduler, repo, dispatcher.NewLogDispatcher())
+	scheduler := scheduler.NewScheduler(&cfg.Scheduler, repo, dispatcher)
 
 	StartScheduler(ctx, scheduler)
 
