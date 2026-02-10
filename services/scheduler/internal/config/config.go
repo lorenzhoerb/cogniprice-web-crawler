@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	Env       string          `mapstructure:"app"`
 	DB        DBConfig        `mapstructure:"db"`
 	Scheduler SchedulerConfig `mapstructure:"scheduler"`
 	Server    ServerConfig    `mapstructure:"server"`
@@ -68,6 +69,11 @@ func Load(env string) (*Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
+	if env == "" {
+		env = "local" // fallback default
+	}
+	cfg.Env = env
 
 	return &cfg, nil
 }
